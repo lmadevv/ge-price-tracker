@@ -1,15 +1,15 @@
 # GE Price Tracker <img align="right" width="36" height="39" alt="GE Price Tracker Icon" src="https://github.com/user-attachments/assets/e25d70a4-a64a-4769-a60a-04b044762f53" />
 
-A RuneLite plugin that adds a sidebar panel with item lookups and real-time bank/inventory valuation.
+A clean, responsive [RuneLite](https://runelite.net) plugin for checking Grand Exchange prices, inspecting item price history graphs, and tracking inventory and bank wealth in real time.
 
 ---
 
 ## Features
 
-| 🔍 Item Lookup | 💰 Net Worth & Valuation |
-| :---: | :---: |
-| <img width="245" alt="Lookup Tab" src="https://github.com/user-attachments/assets/15904be5-2721-4978-9761-5f04b1e34b74" /> | <img width="247" alt="Value Tab" src="https://github.com/user-attachments/assets/b225fe17-779e-4b14-abda-055fdf4410a3" /> |
-| Search GE guide prices, high alch values, margins, & history | Track live inventory, bank, and combined account wealth |
+| 🔍 Item Lookup | 💰 Net Worth & Valuation | ⚙️ Configuration |
+| :---:|:---:|:---:|
+| <img width="230" alt="Lookup Tab" src="screenshots/lookup-tab.png" /> | <img width="230" alt="Value Tab" src="screenshots/value-tab.png" /> | <img width="230" alt="Plugin Configuration" src="screenshots/configuration.png" /> |
+| Search GE guide prices, high alch values, margins, & history | Track live inventory, bank, and combined account wealth | Toggle live Wiki prices, default graph range, & top items |
 
 ### 1. Lookup Tab
 - Search any item to instantly view its **GE guide price** and **High Alchemy value**.
@@ -26,13 +26,39 @@ A RuneLite plugin that adds a sidebar panel with item lookups and real-time bank
 
 ---
 
-## Live Wiki Prices
+## Live Wiki Prices & Privacy
 
-Real-time price quotes and historical charts are powered by the [OSRS Wiki real-time prices API](https://prices.runescape.wiki/).
+Real-time price quotes and historical charts are powered by the official [OSRS Wiki real-time prices API](https://prices.runescape.wiki/).
 
 > [!NOTE]  
-> **Disabled by default:** This feature connects to an external, third-party server. You can enable it anytime in the plugin settings:
+> **Disabled by default:** This feature connects to an external, third-party server. You can enable it anytime in the plugin configuration.
 
-<p align="center">
-  <img width="250" alt="Plugin Configuration" src="https://github.com/user-attachments/assets/fbdb5b32-395e-491c-b662-4fd4f5a6f85b" />
-</p>
+---
+
+## Configuration
+
+| Setting | Default | Description |
+|---|---|---|
+| **Live Wiki prices & history** | `Disabled` | Fetch real-time buy/sell prices, margins, and history graphs from the OSRS Wiki API. |
+| **Default graph range** | `2W` | Default timeframe shown on the item price history graph (1D, 2W, 3M, 1Y). |
+| **Top items shown** | `10` | Number of top valuable items displayed in the Value tab (1–20). |
+
+---
+
+## Running in Development
+
+Run with the included development launcher:
+```powershell
+.\run-dev.bat
+```
+
+Or build with Gradle:
+```powershell
+.\gradlew.bat run
+```
+
+---
+
+## License
+
+This project is licensed under the BSD 2-Clause License - see the [LICENSE](LICENSE) file for details.
