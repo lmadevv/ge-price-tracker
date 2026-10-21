@@ -1,4 +1,4 @@
-# GE Price Tracker <img align="right" width="36" height="39" alt="GE Price Tracker Icon" src="https://github.com/user-attachments/assets/e25d70a4-a64a-4769-a60a-04b044762f53" />
+# GE Price Tracker
 
 A clean, responsive [RuneLite](https://runelite.net) plugin for checking Grand Exchange prices, inspecting item price history graphs, and tracking inventory and bank wealth in real time.
 
