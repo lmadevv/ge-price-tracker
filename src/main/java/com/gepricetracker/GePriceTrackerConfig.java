@@ -44,4 +44,15 @@ public interface GePriceTrackerConfig extends Config
 	{
 		return 10;
 	}
+
+	@ConfigItem(
+		keyName = "favorites",
+		name = "Favorites",
+		description = "Stored favorite item IDs",
+		hidden = true
+	)
+	default String favorites()
+	{
+		return "";
+	}
 }

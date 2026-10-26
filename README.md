@@ -12,7 +12,8 @@ A clean, responsive [RuneLite](https://runelite.net) plugin for checking Grand E
 | Search GE guide prices, high alch values, margins, & history | Track live inventory, bank, and combined account wealth | Toggle live Wiki prices, default graph range, & top items |
 
 ### 1. Lookup Tab
-- Search any item to instantly view its **GE guide price** and **High Alchemy value**.
+- **Favorites & Quick Access:** Star (★) any item in search results or detail view to pin it to your favorites. Access your favorites with one click via the top star button or by clearing the search bar.
+- **Search Any Item:** Instantly view its **GE guide price** and **High Alchemy value**.
 - When **Live Wiki Prices** are enabled:
   - View instant buy and sell prices.
   - Calculate flip margins after GE tax.

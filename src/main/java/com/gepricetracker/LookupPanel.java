@@ -5,18 +5,23 @@ import com.gepricetracker.wiki.WikiPriceClient;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -24,7 +29,9 @@ import javax.swing.JPanel;
 import javax.swing.JToggleButton;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
+import net.runelite.api.ItemComposition;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
@@ -33,7 +40,7 @@ import net.runelite.client.util.LinkBrowser;
 import net.runelite.http.api.item.ItemPrice;
 
 /**
- * "Lookup" tab: item search -> results list -> item detail with live prices and a history graph.
+ * "Lookup" tab: item search / favorites -> results list -> item detail with live prices and a history graph.
  */
 class LookupPanel extends JPanel
 {
@@ -46,13 +53,17 @@ class LookupPanel extends JPanel
 	private final ClientThread clientThread;
 	private final WikiPriceClient wikiClient;
 	private final GePriceTrackerConfig config;
+	private final ConfigManager configManager;
 
+	private final Set<Integer> favoriteIds = new LinkedHashSet<>();
 	private final IconTextField searchBar = new IconTextField();
 	private final CardLayout cards = new CardLayout();
 	private final JPanel cardPanel = new JPanel(cards);
 	private final JPanel resultsList = new JPanel(new GridBagLayout());
 
 	// Detail view
+	private JLabel backButton;
+	private final JLabel detailStar = new JLabel();
 	private final JLabel detailIcon = new JLabel();
 	private final JLabel detailName = new JLabel();
 	private final JLabel geValue = valueLabel();
@@ -71,17 +82,22 @@ class LookupPanel extends JPanel
 	private SearchResult current;
 	private Timestep timestep;
 	private int searchSeq;
+	private boolean showingFavorites = false;
 
-	LookupPanel(ItemManager itemManager, ClientThread clientThread, WikiPriceClient wikiClient, GePriceTrackerConfig config)
+	LookupPanel(ItemManager itemManager, ClientThread clientThread, WikiPriceClient wikiClient,
+				GePriceTrackerConfig config, ConfigManager configManager)
 	{
 		this.itemManager = itemManager;
 		this.clientThread = clientThread;
 		this.wikiClient = wikiClient;
 		this.config = config;
+		this.configManager = configManager;
 		this.timestep = config.defaultTimestep();
 
 		setLayout(new BorderLayout());
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
+
+		loadFavorites();
 
 		searchBar.setIcon(IconTextField.Icon.SEARCH);
 		searchBar.setPreferredSize(new Dimension(0, 30));
@@ -92,13 +108,30 @@ class LookupPanel extends JPanel
 		{
 			searchSeq++;
 			searchBar.setIcon(IconTextField.Icon.SEARCH);
-			showResultsMessage("Type an item name and press Enter.");
+			showDefaultOrFavorites();
 		});
 
-		JPanel searchWrapper = new JPanel(new BorderLayout());
+		JButton favBtn = new JButton("★");
+		favBtn.setFont(FontManager.getRunescapeBoldFont());
+		favBtn.setPreferredSize(new Dimension(30, 30));
+		favBtn.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		favBtn.setForeground(Color.YELLOW);
+		favBtn.setToolTipText("View Favorites");
+		favBtn.setFocusPainted(false);
+		favBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		favBtn.addActionListener(e ->
+		{
+			searchSeq++;
+			searchBar.setText("");
+			searchBar.setIcon(IconTextField.Icon.SEARCH);
+			loadAndShowFavorites();
+		});
+
+		JPanel searchWrapper = new JPanel(new BorderLayout(4, 0));
 		searchWrapper.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		searchWrapper.setBorder(new EmptyBorder(10, 0, 8, 0));
 		searchWrapper.add(searchBar, BorderLayout.CENTER);
+		searchWrapper.add(favBtn, BorderLayout.EAST);
 
 		resultsList.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		cardPanel.add(ScrollableColumn.wrap(resultsList), RESULTS_CARD);
@@ -107,7 +140,7 @@ class LookupPanel extends JPanel
 		add(searchWrapper, BorderLayout.NORTH);
 		add(cardPanel, BorderLayout.CENTER);
 
-		showResultsMessage("Type an item name and press Enter.");
+		showDefaultOrFavorites();
 	}
 
 	void onConfigChanged()
@@ -118,6 +151,162 @@ class LookupPanel extends JPanel
 		}
 	}
 
+	// ---------------------------------------------------------------- favorites
+
+	private boolean isFavorite(int itemId)
+	{
+		return favoriteIds.contains(itemId);
+	}
+
+	private void toggleFavorite(int itemId)
+	{
+		if (favoriteIds.contains(itemId))
+		{
+			favoriteIds.remove(itemId);
+		}
+		else
+		{
+			favoriteIds.add(itemId);
+		}
+		saveFavorites();
+
+		if (showingFavorites)
+		{
+			loadAndShowFavorites();
+		}
+	}
+
+	private void loadFavorites()
+	{
+		favoriteIds.clear();
+		String str = configManager.getConfiguration(GePriceTrackerConfig.GROUP, "favorites");
+		if (str != null && !str.trim().isEmpty())
+		{
+			for (String part : str.split(","))
+			{
+				try
+				{
+					int id = Integer.parseInt(part.trim());
+					if (id > 0)
+					{
+						favoriteIds.add(id);
+					}
+				}
+				catch (NumberFormatException ignored)
+				{
+				}
+			}
+		}
+	}
+
+	private void saveFavorites()
+	{
+		String str = favoriteIds.stream()
+			.map(String::valueOf)
+			.collect(Collectors.joining(","));
+		configManager.setConfiguration(GePriceTrackerConfig.GROUP, "favorites", str);
+	}
+
+	private void showDefaultOrFavorites()
+	{
+		if (!favoriteIds.isEmpty())
+		{
+			loadAndShowFavorites();
+		}
+		else
+		{
+			showingFavorites = true;
+			showEmptyFavorites();
+		}
+	}
+
+	private void loadAndShowFavorites()
+	{
+		showingFavorites = true;
+		if (favoriteIds.isEmpty())
+		{
+			showEmptyFavorites();
+			return;
+		}
+
+		final int seq = ++searchSeq;
+		List<Integer> ids = new ArrayList<>(favoriteIds);
+		clientThread.invokeLater(() ->
+		{
+			List<SearchResult> results = new ArrayList<>();
+			for (int id : ids)
+			{
+				ItemComposition comp = itemManager.getItemComposition(id);
+				if (comp != null)
+				{
+					long gePrice = itemManager.getItemPrice(id);
+					results.add(new SearchResult(id, comp.getName(), gePrice, comp.getHaPrice()));
+				}
+			}
+
+			SwingUtilities.invokeLater(() ->
+			{
+				if (seq != searchSeq || !showingFavorites)
+				{
+					return;
+				}
+				showFavorites(results);
+			});
+		});
+	}
+
+	private void showFavorites(List<SearchResult> favorites)
+	{
+		resultsList.removeAll();
+		int y = 0;
+
+		JPanel headerRow = new JPanel(new BorderLayout());
+		headerRow.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
+		headerRow.setBorder(new EmptyBorder(5, 6, 5, 6));
+
+		JLabel title = new JLabel("★ Favorite Items (" + favorites.size() + ")");
+		title.setFont(FontManager.getRunescapeBoldFont());
+		title.setForeground(Color.YELLOW);
+		headerRow.add(title, BorderLayout.CENTER);
+
+		resultsList.add(headerRow, UiUtil.row(y++, 0));
+
+		for (SearchResult result : favorites)
+		{
+			resultsList.add(buildResultRow(result), UiUtil.row(y++, 2));
+		}
+
+		resultsList.revalidate();
+		resultsList.repaint();
+		cards.show(cardPanel, RESULTS_CARD);
+	}
+
+	private void showEmptyFavorites()
+	{
+		resultsList.removeAll();
+		JPanel msg = new JPanel();
+		msg.setLayout(new BoxLayout(msg, BoxLayout.Y_AXIS));
+		msg.setOpaque(false);
+		msg.setBorder(new EmptyBorder(12, 6, 12, 6));
+
+		JLabel title = new JLabel("No favorite items yet");
+		title.setFont(FontManager.getRunescapeBoldFont());
+		title.setForeground(Color.WHITE);
+		title.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+		JLabel hint = UiUtil.wrappingLabel("Search an item and click the star (☆) to pin it here for quick access.");
+		hint.setBorder(new EmptyBorder(6, 0, 0, 0));
+		hint.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+		msg.add(title);
+		msg.add(hint);
+
+		resultsList.add(msg, UiUtil.row(0, 0));
+		resultsList.revalidate();
+		resultsList.repaint();
+		cards.show(cardPanel, RESULTS_CARD);
+	}
+
 	// ---------------------------------------------------------------- search
 
 	private void search()
@@ -125,7 +314,7 @@ class LookupPanel extends JPanel
 		String query = searchBar.getText().trim();
 		if (query.isEmpty())
 		{
-			showResultsMessage("Type an item name and press Enter.");
+			showDefaultOrFavorites();
 			return;
 		}
 
@@ -172,6 +361,7 @@ class LookupPanel extends JPanel
 
 	private void showResults(List<SearchResult> results, String query)
 	{
+		showingFavorites = false;
 		if (results.isEmpty())
 		{
 			showResultsMessage("No tradeable items match \"" + query + "\".");
@@ -192,6 +382,7 @@ class LookupPanel extends JPanel
 
 	private void showResultsMessage(String message)
 	{
+		showingFavorites = false;
 		resultsList.removeAll();
 		JLabel label = UiUtil.wrappingLabel(message);
 		label.setBorder(new EmptyBorder(6, 4, 0, 4));
@@ -220,8 +411,59 @@ class LookupPanel extends JPanel
 		text.add(name);
 		text.add(UiUtil.smallLabel(UiUtil.formatGp(result.getGePrice()), ColorScheme.GRAND_EXCHANGE_PRICE));
 
+		JLabel star = new JLabel();
+		star.setFont(FontManager.getRunescapeBoldFont());
+		star.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		star.setBorder(new EmptyBorder(0, 4, 0, 2));
+
+		Runnable updateStar = () ->
+		{
+			boolean fav = isFavorite(result.getId());
+			star.setText(fav ? "★" : "☆");
+			star.setForeground(fav ? Color.YELLOW : ColorScheme.LIGHT_GRAY_COLOR);
+			star.setToolTipText(fav ? "Remove from favorites" : "Add to favorites");
+		};
+		updateStar.run();
+
+		star.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				e.consume();
+				toggleFavorite(result.getId());
+				if (showingFavorites)
+				{
+					loadAndShowFavorites();
+				}
+				else
+				{
+					updateStar.run();
+				}
+			}
+
+			@Override
+			public void mouseEntered(MouseEvent e)
+			{
+				if (!isFavorite(result.getId()))
+				{
+					star.setForeground(Color.YELLOW);
+				}
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				if (!isFavorite(result.getId()))
+				{
+					star.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+				}
+			}
+		});
+
 		row.add(icon, BorderLayout.WEST);
 		row.add(text, BorderLayout.CENTER);
+		row.add(star, BorderLayout.EAST);
 
 		row.addMouseListener(new MouseAdapter()
 		{
@@ -255,40 +497,83 @@ class LookupPanel extends JPanel
 		panel.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		int y = 0;
 
-		JLabel back = UiUtil.smallLabel("< Back to results", ColorScheme.LIGHT_GRAY_COLOR);
-		back.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		back.addMouseListener(new MouseAdapter()
+		backButton = UiUtil.smallLabel("< Back to results", ColorScheme.LIGHT_GRAY_COLOR);
+		backButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		backButton.addMouseListener(new MouseAdapter()
 		{
 			@Override
 			public void mouseClicked(MouseEvent e)
 			{
 				current = null;
-				cards.show(cardPanel, RESULTS_CARD);
+				if (showingFavorites)
+				{
+					loadAndShowFavorites();
+				}
+				else
+				{
+					cards.show(cardPanel, RESULTS_CARD);
+				}
 			}
 
 			@Override
 			public void mouseEntered(MouseEvent e)
 			{
-				back.setForeground(Color.WHITE);
+				backButton.setForeground(Color.WHITE);
 			}
 
 			@Override
 			public void mouseExited(MouseEvent e)
 			{
-				back.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+				backButton.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 			}
 		});
-		panel.add(back, UiUtil.row(y++, 0));
+		panel.add(backButton, UiUtil.row(y++, 0));
 
-		// Header: icon + name
+		// Header: icon + name + favorite star
 		JPanel header = new JPanel(new BorderLayout(8, 0));
 		header.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		header.setBorder(new EmptyBorder(6, 6, 6, 6));
 		detailIcon.setPreferredSize(new Dimension(36, 32));
 		detailName.setForeground(Color.WHITE);
 		detailName.setFont(FontManager.getRunescapeBoldFont());
+
+		detailStar.setFont(FontManager.getRunescapeBoldFont());
+		detailStar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		detailStar.setBorder(new EmptyBorder(0, 6, 0, 4));
+		detailStar.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				if (current != null)
+				{
+					toggleFavorite(current.getId());
+					updateDetailStar();
+				}
+			}
+
+			@Override
+			public void mouseEntered(MouseEvent e)
+			{
+				if (current != null && !isFavorite(current.getId()))
+				{
+					detailStar.setForeground(Color.YELLOW);
+				}
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				if (current != null && !isFavorite(current.getId()))
+				{
+					detailStar.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+				}
+			}
+		});
+
 		header.add(detailIcon, BorderLayout.WEST);
 		header.add(detailName, BorderLayout.CENTER);
+		header.add(detailStar, BorderLayout.EAST);
 		panel.add(header, UiUtil.row(y++, 6));
 
 		// Always-available prices (from RuneLite)
@@ -353,14 +638,29 @@ class LookupPanel extends JPanel
 		return panel;
 	}
 
+	private void updateDetailStar()
+	{
+		if (current == null)
+		{
+			return;
+		}
+		boolean fav = isFavorite(current.getId());
+		detailStar.setText(fav ? "★" : "☆");
+		detailStar.setForeground(fav ? Color.YELLOW : ColorScheme.LIGHT_GRAY_COLOR);
+		detailStar.setToolTipText(fav ? "Remove from favorites" : "Add to favorites");
+	}
+
 	private void showDetail(SearchResult result)
 	{
 		current = result;
+		backButton.setText(showingFavorites ? "< Back to favorites" : "< Back to results");
 		detailIcon.setIcon(null);
 		itemManager.getImage(result.getId()).addTo(detailIcon);
 		detailName.setText("<html>" + result.getName() + "</html>");
 		geValue.setText(UiUtil.formatGp(result.getGePrice()));
 		haValue.setText(UiUtil.formatGp(result.getHaPrice()));
+
+		updateDetailStar();
 
 		timestep = config.defaultTimestep();
 		timestepButtons.get(timestep).setSelected(true);

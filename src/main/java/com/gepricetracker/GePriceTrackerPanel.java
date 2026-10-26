@@ -6,6 +6,7 @@ import javax.inject.Inject;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
@@ -21,7 +22,7 @@ class GePriceTrackerPanel extends PluginPanel
 	private final ValuePanel valuePanel;
 
 	@Inject
-	GePriceTrackerPanel(ItemManager itemManager, ClientThread clientThread, WikiPriceClient wikiClient, GePriceTrackerConfig config)
+	GePriceTrackerPanel(ItemManager itemManager, ClientThread clientThread, WikiPriceClient wikiClient, GePriceTrackerConfig config, ConfigManager configManager)
 	{
 		super(false);
 
@@ -29,7 +30,7 @@ class GePriceTrackerPanel extends PluginPanel
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
 		setBorder(new EmptyBorder(10, 10, 10, 10));
 
-		lookupPanel = new LookupPanel(itemManager, clientThread, wikiClient, config);
+		lookupPanel = new LookupPanel(itemManager, clientThread, wikiClient, config, configManager);
 		valuePanel = new ValuePanel(itemManager);
 
 		JPanel display = new JPanel(new BorderLayout());

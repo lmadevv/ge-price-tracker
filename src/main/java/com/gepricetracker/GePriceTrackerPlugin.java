@@ -134,6 +134,11 @@ public class GePriceTrackerPlugin extends Plugin
 			return;
 		}
 
+		if ("favorites".equals(event.getKey()))
+		{
+			return;
+		}
+
 		clientThread.invokeLater(this::publishValues);
 		SwingUtilities.invokeLater(() ->
 		{
