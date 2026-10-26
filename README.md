@@ -6,17 +6,18 @@ A clean, responsive [RuneLite](https://runelite.net) plugin for checking Grand E
 
 ## Features
 
-| 🔍 Item Lookup | 💰 Net Worth & Valuation | ⚙️ Configuration |
+| 🔍 Item Lookup | ⭐ Favorite Items | 💰 Net Worth & Valuation |
 | :---:|:---:|:---:|
-| <img width="230" alt="Lookup Tab" src="screenshots/lookup-tab.png" /> | <img width="230" alt="Value Tab" src="screenshots/value-tab.png" /> | <img width="230" alt="Plugin Configuration" src="screenshots/configuration.png" /> |
-| Search GE guide prices, high alch values, margins, & history | Track live inventory, bank, and combined account wealth | Toggle live Wiki prices, default graph range, & top items |
+| <img width="220" alt="Item Lookup" src="screenshots/lookup-tab.png" /> | <img width="220" alt="Favorite Items" src="screenshots/favorites-tab.png" /> | <img width="220" alt="Net Worth & Valuation" src="screenshots/value-tab.png" /> |
+| *Search items, view prices, margins & star items* | *Instant 1-click access to pinned favorites* | *Live inventory, bank value & top items* |
 
-### 1. Lookup Tab
-- **Favorites & Quick Access:** Star (★) any item in search results or detail view to pin it to your favorites. Access your favorites with one click via the top star button or by clearing the search bar.
-- **Search Any Item:** Instantly view its **GE guide price** and **High Alchemy value**.
-- When **Live Wiki Prices** are enabled:
-  - View instant buy and sell prices.
-  - Calculate flip margins after GE tax.
+### 1. Lookup & Favorites Tab
+- **Quick Favorites:** Click the star (★) on any item in search results or detail view to pin it to your favorites.
+- **Instant Access:** One-click access to your favorites via the top `★` button or whenever the search bar is empty.
+- **Search Any Item:** Autocomplete search across all tradeable items with guide prices and High Alchemy values.
+- **Live Wiki Prices & Margins:**
+  - View real-time instant buy and instant sell prices.
+  - Calculate tax-adjusted flip margins and ROI percentage.
   - Explore interactive price history graphs (`1D` / `2W` / `3M` / `1Y`).
 
 ### 2. Value Tab
@@ -37,6 +38,10 @@ Real-time price quotes and historical charts are powered by the official [OSRS W
 ---
 
 ## Configuration
+
+<p align="center">
+  <img width="240" alt="Plugin Configuration" src="screenshots/configuration.png" />
+</p>
 
 | Setting | Default | Description |
 |---|---|---|
